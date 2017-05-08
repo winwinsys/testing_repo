@@ -1,47 +1,17 @@
-Groovy
-
-Node { // ------------------------------------ // - STAGE: Compile // - ----------------------------------- 
-   stage 'Compile'
-   
-   
-   
-   
-   // - Set variables 
-   echo 'Configuring variables' def mvnHome = tool 'M3' 
-   env . PATH = "$ {mvnHome} / bin: $ {env.PATH}" 
-   echo "var mvnHome = '$ {mvnHome}'" 
-   echo "var env.PATH = '$ {env.PATH}'"
+node("docker") {
+    docker.withRegistry('<<your-docker-registry>>', '<<your-docker-registry-credentials-id>>') {
     
-   
-   // - Download code from SCM 
-   echo 'Downloading SCM code' 
-   sh 'rm -rf *'
-   Checkout scm
-   
-   // - Compiling 
-   echo 'Compiling application' 
-   sh 'mvn clean compile'
-   
-   ]) If ( currentBuild . Result == 'UNSTABLE' ) 
-         currentBuild . Result = 'FAILURE' throw err
+        git url: "<<your-git-repo-url>>", credentialsId: '<<your-git-credentials-id>>'
+    
+        sh "git rev-parse HEAD > .git/commit-id"
+        def commit_id = readFile('.git/commit-id').trim()
+        println commit_id
+    
+        stage "build"
+        def app = docker.build "your-project-name"
+    
+        stage "publish"
+        app.push 'master'
+        app.push "${commit_id}"
     }
-   
-   
-     
-      
-         
-      
-   
-   // ------------------------------------ // - STAGE: Install // --- --------------------------------- 
-   stage 'Install' 
-   echo 'Installs the generated package in the maven' 
-   sh ' repository Mvn install -Dmaven.test.skip = true '
-   
-   
-   
-   // ------------------------------------ // - STAGE: Archive // --- --------------------------------- 
-   stage 'Archive' 
-   echo 'File the package generated in Jenkins' 
-   step ( [ $ Class : 'ArtifactArchiver' , artifacts : '** / target / * .jar, ** / target / * .war' , fingerprint : true ]) }
-   
-      
+}
